@@ -1,6 +1,4 @@
 name: 编译OPPO/Realme-安卓12-通用mt6853机型内核
-            支持ksu docker lxc kvm Kali-Nethunter
-
 on:
   workflow_dispatch:  
 
@@ -37,21 +35,14 @@ jobs:
     - name: 下载内核源码
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace
-        git clone https://github.com/Winkmoon/android_kernel_mtk6853_a1 android-kernel
+        git clone --depth 1 -b xinran-a12 https://github.com/Winkmoon/android_kernel_mtk6853_a1 android-kernel
         cd android-kernel
 
     - name: 更新 ksu
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         rm -rf KernelSU
-        curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/legacy/kernel/setup.sh" | bash -s legacy
-        sed -i 's/task_work_add(tsk, cb, TWA_RESUME);/task_work_add(tsk, cb, 0);/' ./drivers/kernelsu/allowlist.c
-        cd KernelSU-Next
-        KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 10200)
-        echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-        sed -i "s/DKSU_VERSION=16/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
-        cd ..
-        #sed -i '/atomic_set(&current->seccomp.filter_count, 0);/d' drivers/kernelsu/core_hook.c
+        curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s susfs-v1.5.5
 
     - name: 设置ccache缓存
       uses: hendrikmuhs/ccache-action@v1.2
