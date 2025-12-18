@@ -94,6 +94,8 @@ static void inotify_fdinfo(struct seq_file *m, struct fsnotify_mark *mark)
 {
 	struct inotify_inode_mark *inode_mark;
 	struct inode *inode;
+	/* 统一将mask声明移到函数开头（符合C89标准，避免编译警告） */
+	u32 mask;
 
 	if (!(mark->connector->flags & FSNOTIFY_OBJ_TYPE_INODE))
 		return;
@@ -101,45 +103,50 @@ static void inotify_fdinfo(struct seq_file *m, struct fsnotify_mark *mark)
 	inode_mark = container_of(mark, struct inotify_inode_mark, fsn_mark);
 	inode = igrab(mark->connector->inode);
 	if (inode) {
-		/* 核心修复：将mask声明移到代码块最开头（符合C89标准） */
-		u32 mask;
-
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 		if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
 				unlikely(inode->i_state & INODE_STATE_SUS_KSTAT)) {
-			struct path path;
+			struct path path = {};  // 初始化避免野指针
 			char *pathname = kmalloc(PAGE_SIZE, GFP_KERNEL);
-			char *dpath;
+			char *dpath = NULL;
+			
 			if (!pathname) {
 				goto out_seq_printf;
 			}
+			
+			// 修复：d_path返回值可能为NULL，需先判空
 			dpath = d_path(&file->f_path, pathname, PAGE_SIZE);
-			if (!dpath) {
-				goto out_free_pathname;
+			if (!dpath || kern_path(dpath, 0, &path)) {
+				kfree(pathname);  // 提前释放，避免内存泄漏
+				goto out_seq_printf;
 			}
-			if (kern_path(dpath, 0, &path)) {
-				goto out_free_pathname;
-			}
+			
+			// 核心修复1：移除inotify_mark_user_mask函数调用，替换为mark->mask（内核原生符号）
+			// 核心修复2：inotify_mark_user_mask不存在，改用mark->mask & IN_ALL_EVENTS（等价逻辑）
+			mask = mark->mask & (IN_ACCESS | IN_MODIFY | IN_ATTRIB | IN_CLOSE_WRITE | 
+			                     IN_CLOSE_NOWRITE | IN_OPEN | IN_MOVED_FROM | IN_MOVED_TO | 
+			                     IN_CREATE | IN_DELETE | IN_DELETE_SELF | IN_MOVE_SELF);
 			seq_printf(m, "inotify wd:%x ino:%lx sdev:%x mask:%x ignored_mask:0 ",
 			   inode_mark->wd, path.dentry->d_inode->i_ino, path.dentry->d_inode->i_sb->s_dev,
-			   inotify_mark_user_mask(mark));
+			   mask);  // 移除错误的inotify_mark_user_mask(mark)
 			show_mark_fhandle(m, path.dentry->d_inode);
 			seq_putc(m, '\n');
-			iput(inode);
+			
+			// 修复：释放path资源（避免内存泄漏）
 			path_put(&path);
 			kfree(pathname);
+			iput(inode);  // 提前释放inode，避免重复释放
 			return;
-out_free_pathname:
-			kfree(pathname);
-		}
+out_free_pathname:  // 统一错误出口
+			if (pathname) kfree(pathname);
+			if (!IS_ERR_OR_NULL(&path)) path_put(&path);
 out_seq_printf:
+			;  // 空语句避免编译警告
+		}
 #endif
 		/*
-		 * IN_ALL_EVENTS represents all of the mask bits
-		 * that we expose to userspace.  There is at
-		 * least one bit (FS_EVENT_ON_CHILD) which is
-		 * used only internally to the kernel.
-		 * 修复：替换IN_ALL_EVENTS为老内核兼容宏 + 提前声明mask
+		 * 修复：复用mask变量，逻辑与susfs分支保持一致
+		 * 替换IN_ALL_EVENTS为显式掩码，兼容老内核
 		 */
 		mask = mark->mask & (IN_ACCESS | IN_MODIFY | IN_ATTRIB | IN_CLOSE_WRITE | 
 		                     IN_CLOSE_NOWRITE | IN_OPEN | IN_MOVED_FROM | IN_MOVED_TO | 
