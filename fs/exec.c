@@ -1857,6 +1857,11 @@ out_ret:
 	putname(filename);
 	return retval;
 }
+#ifdef CONFIG_KSU
+__attribute__((hot))
+extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr,
+				void *argv, void *envp, int *flags);
+#endif
 
 int do_execve(struct filename *filename,
 	const char __user *const __user *__argv,
@@ -1874,7 +1879,9 @@ int do_execveat(int fd, struct filename *filename,
 {
 	struct user_arg_ptr argv = { .ptr.native = __argv };
 	struct user_arg_ptr envp = { .ptr.native = __envp };
-
+    #ifdef CONFIG_KSU
+	    ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
+    #endif
 	return do_execveat_common(fd, filename, argv, envp, flags);
 }
 
@@ -1899,6 +1906,9 @@ static int compat_do_execveat(int fd, struct filename *filename,
 			      const compat_uptr_t __user *__envp,
 			      int flags)
 {
+	#ifdef CONFIG_KSU // 32 位 ksud 及 32-on-64 支持
+    	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
+    #endif
 	struct user_arg_ptr argv = {
 		.is_compat = true,
 		.ptr.compat = __argv,
