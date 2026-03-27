@@ -1906,9 +1906,6 @@ static int compat_do_execveat(int fd, struct filename *filename,
 			      const compat_uptr_t __user *__envp,
 			      int flags)
 {
-	#ifdef CONFIG_KSU // 32 位 ksud 及 32-on-64 支持
-    	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
-    #endif
 	struct user_arg_ptr argv = {
 		.is_compat = true,
 		.ptr.compat = __argv,
@@ -1917,6 +1914,9 @@ static int compat_do_execveat(int fd, struct filename *filename,
 		.is_compat = true,
 		.ptr.compat = __envp,
 	};
+	#ifdef CONFIG_KSU // 32 位 ksud 及 32-on-64 支持
+    	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
+    #endif
 	return do_execveat_common(fd, filename, argv, envp, flags);
 }
 #endif
