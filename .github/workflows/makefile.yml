@@ -11,6 +11,7 @@ jobs:
     - name: 检出当前仓库代码
       uses: actions/checkout@v4
       with:
+         ref: 'kernelsu_next_pacth'
          path: '$GITHUB_WORKSPACE/kernel_workspace/android-kernel'
           
     - name: 构建编译内核环境
