@@ -8,8 +8,11 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
-
+    - name: 检出当前仓库代码
+      uses: actions/checkout@v4
+      with:
+         path: '$GITHUB_WORKSPACE/kernel_workspace/android-kernel'
+          
     - name: 构建编译内核环境
       run: |
         sudo apt-get update
@@ -34,11 +37,9 @@ jobs:
         mkdir clang-aosp
         git clone -q --depth=1 https://github.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-6443078 -b 10.0 clang-aosp
 
-    - name: 下载内核源码
+    - name: 使用已经检出的内核源码
       run: |
-        cd $GITHUB_WORKSPACE/kernel_workspace
-        git clone -b kernelsu_next_pacth https://github.com/inforcqb/android_kernel_mtk6853_a1.git android-kernel
-        cd android-kernel
+        cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
 
     - name: 更新 ksu
       run: |
