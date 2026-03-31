@@ -32,7 +32,7 @@ jobs:
       - name: 下载内核源码
         run: |
           cd $GITHUB_WORKSPACE/kernel_workspace
-          git clone -b kernelsu_next_pacth https://github.com/inforcqb/android_kernel_mtk6853_a1.git android-kernel
+          git clone -b update-susfs https://github.com/inforcqb/android_kernel_mtk6853_a1.git android-kernel
           cd android-kernel
       
       - name: 更新 ksu
