@@ -69,6 +69,7 @@ jobs:
         export KBUILD_BUILD_USER=user
         export KBUILD_BUILD_HOST=host
         export KBUILD_BUILD_TIMESTAMP="Tue Mar 4 10:16:14 CST 2025"
+        ls
         make -s -j$(nproc --all) O=out ARCH=arm64 mt6853-ss_defconfig
         cp .config drivers/kernelsu/
         cd drivers/kernelsu/
