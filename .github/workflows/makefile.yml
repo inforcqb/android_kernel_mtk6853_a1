@@ -70,7 +70,9 @@ jobs:
         export KBUILD_BUILD_HOST=host
         export KBUILD_BUILD_TIMESTAMP="Tue Mar 4 10:16:14 CST 2025"
         make -s -j$(nproc --all) O=out ARCH=arm64 mt6853-ss_defconfig
-        make ./drivers/kernelsu -j$(nproc --all) CC="ccache clang" O=out ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- LD=ld.lld
+        cp .config drivers/kernelsu/
+        cd drivers/kernelsu/
+        make -j$(nproc --all) CC="ccache clang" O=out ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- LD=ld.lld
 
     - name: 制作Anykernel3卡刷包
       run: |
