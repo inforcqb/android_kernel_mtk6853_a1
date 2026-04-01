@@ -47,7 +47,7 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
         rm -rf KernelSU
-        curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/legacy/kernel/setup.sh" | bash -s v3.1.0-legacy
+        curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/legacy/kernel/setup.sh" | bash -s v3.1.0-legacy-susfs
         sed -i 's/task_work_add(tsk, cb, TWA_RESUME);/task_work_add(tsk, cb, 0);/' ./drivers/kernelsu/allowlist.c
         cd KernelSU-Next
         KSU_VERSION=$(expr $(/usr/bin/git rev-list --count HEAD) "+" 10200)
@@ -70,7 +70,7 @@ jobs:
         export KBUILD_BUILD_HOST=host
         export KBUILD_BUILD_TIMESTAMP="Tue Mar 4 10:16:14 CST 2025"
         make -s -j$(nproc --all) O=out ARCH=arm64 mt6853-ss_defconfig
-        make -j$(nproc --all) CC="ccache clang" O=out ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- LD=ld.lld
+        make ./drivers/kernelsu -j$(nproc --all) CC="ccache clang" O=out ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- LD=ld.lld
 
     - name: 制作Anykernel3卡刷包
       run: |
