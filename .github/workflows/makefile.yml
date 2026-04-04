@@ -147,6 +147,7 @@ jobs:
           ${{ github.workspace }}/kernel_workspace/android-kernel/out/arch/arm64/boot/Image.gz
           ${{ github.workspace }}/build-info.txt
         generate_release_notes: true
+        continue-on-error: true
 
     - name: 上传构建产物作为工作流 artifact
       uses: actions/upload-artifact@v4
