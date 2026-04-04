@@ -7,17 +7,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    # 添加写权限以创建Release
+    permissions:
+      contents: write
+    
     steps:
-    - uses: actions/checkout@v4
-
-
-
-
     - name: 构建编译内核环境
       run: |
         sudo apt-get update
         sudo -E apt-get -y -qq install git make bc bison ccache openssl dos2unix zip kmod cpio flex libelf-dev curl libssl-dev libtfm-dev wget device-tree-compiler ca-certificates python3 python2 binutils binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi
-        mkdir -p $GITHUB_WORKSPACE/kernel_workspace
+        # 已不需要手动创建目录
 
     - name: 下载 Gcc编译器
       run: |
@@ -37,12 +36,16 @@ jobs:
         mkdir clang-aosp
         git clone -q --depth=1 https://github.com/crdroidandroid/android_prebuilts_clang_host_linux-x86_clang-6443078 -b 10.0 clang-aosp
 
-    - name: 下载内核源码
-      run: |
-        cd $GITHUB_WORKSPACE/kernel_workspace
-        git clone -b kernelsu_next_pacth https://github.com/inforcqb/android_kernel_mtk6853_a1.git android-kernel
-        cd android-kernel
-
+    - name: 检出本仓库源码
+      uses: actions/checkout@v4
+      with:
+        # 检出当前仓库的当前分支
+        repository: ${{ github.repository }}
+        ref: ${{ github.ref }}
+        # 检出到指定目录
+        path: $GITHUB_WORKSPACE/kernel_workspace/android-kernel
+        # 获取完整提交历史（用于KSU版本计算）
+        fetch-depth: 0
     - name: 更新 ksu
       run: |
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
@@ -68,7 +71,8 @@ jobs:
         export PATH=$GITHUB_WORKSPACE/kernel_workspace/clang-aosp/bin:$GITHUB_WORKSPACE/kernel_workspace/gcc64/bin:$GITHUB_WORKSPACE/kernel_workspace/gcc32/bin:$PATH
         export KBUILD_BUILD_USER=user
         export KBUILD_BUILD_HOST=host
-        export KBUILD_BUILD_TIMESTAMP="Tue Mar 4 10:16:14 CST 2025"
+        export KBUILD_BUILD_TIMESTAMP="Tue Mar 4 10:16:14 CST 2025" 
+        #防止检查构筑信息而被识别为第三方内核
         make -s -j$(nproc --all) O=out ARCH=arm64 mt6853-ss_defconfig
         make -j$(nproc --all) CC="ccache clang" O=out ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- LD=ld.lld
 
@@ -81,11 +85,67 @@ jobs:
         cd AnyKernel3
         zip -r ../ShirokoNeko-kernel-mt6853.zip .
 
-    - name: 生成版本号
+    - name: 生成版本号和构筑日期
       id: version
       run: |
-        echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
-        echo "TAG_NAME=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+        BUILD_DATE=$(date +'%Y-%m-%d %H:%M:%S')
+        RELEASE_TAG="v$(date +'%Y.%m.%d')-build-${GITHUB_RUN_ID}"
+        
+        echo "BUILD_DATE=${BUILD_DATE}" >> $GITHUB_ENV
+        echo "RELEASE_TAG=${RELEASE_TAG}" >> $GITHUB_ENV
+        echo "RELEASE_NAME=ShirokoNeko Kernel ${RELEASE_TAG}" >> $GITHUB_ENV
+        
+        # 生成包含构筑日期的文件
+        echo "构建时间: ${BUILD_DATE}" > build-info.txt
+        echo "构建ID: ${GITHUB_RUN_ID}" >> build-info.txt
+        echo "提交: ${GITHUB_SHA}" >> build-info.txt
+        echo "触发分支: ${GITHUB_REF_NAME}" >> build-info.txt
+
+    - name: 创建 GitHub Release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: ${{ env.RELEASE_NAME }}
+        body: |
+          ## 🚀 ShirokoNeko Kernel for OPPO/Realme MT6853
+          
+          ### 构筑信息
+          - **构筑日期**: ${{ env.BUILD_DATE }}
+          - **构筑ID**: ${{ github.run_id }}
+          - **Git提交**: ${{ github.sha }}
+          - **构建分支**: ${{ github.ref_name }}
+          
+          ### 功能特性
+          ✅ 支持 KernelSU Next v3.1.0-legacy
+          ✅ Docker 容器支持
+          ✅ LXC 容器支持
+          ✅ KVM 虚拟化支持
+          ✅ Kali Nethunter 支持
+          
+          ### 刷机说明
+          1. 下载对应的刷机包
+          2. 进入 Recovery 模式
+          3. 刷入内核包
+          4. 重启设备
+          
+          ### 注意事项
+          - 仅适用于 Android 12
+          - 仅支持 MT6853 平台
+          - 刷机有风险，请提前备份
+          
+          ---
+          
+          *本构建由 GitHub Actions 自动生成*
+          
+        draft: false
+        prerelease: false
+        files: |
+          ${{ github.workspace }}/kernel_workspace/ShirokoNeko-kernel-mt6853.zip
+          ${{ github.workspace }}/kernel_workspace/android-kernel/out/arch/arm64/boot/Image.gz
+          ${{ github.workspace }}/build-info.txt
+        generate_release_notes: true
 
     - name: 上传构建产物作为工作流 artifact
       uses: actions/upload-artifact@v4
@@ -94,3 +154,4 @@ jobs:
         path: |
           kernel_workspace/ShirokoNeko-kernel-mt6853.zip
           kernel_workspace/android-kernel/out/arch/arm64/boot/Image.gz
+          build-info.txt
