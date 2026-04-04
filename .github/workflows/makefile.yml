@@ -44,7 +44,7 @@ jobs:
         repository: ${{ github.repository }}
         ref: ${{ github.ref }}
         # 检出到指定目录
-        path: $GITHUB_WORKSPACE/kernel_workspace/android-kernel
+        path: /kernel_workspace/android-kernel
         # 获取完整提交历史（用于KSU版本计算）
         fetch-depth: 0
     - name: 更新 ksu
