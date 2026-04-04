@@ -20,6 +20,7 @@ jobs:
 
     - name: 下载 Gcc编译器
       run: |
+        mkdir -p $GITHUB_WORKSPACE/kernel_workspace
         cd $GITHUB_WORKSPACE/kernel_workspace
         
         mkdir gcc64
