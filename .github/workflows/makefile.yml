@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v4
 
     - name: 构建编译内核环境
       run: |
